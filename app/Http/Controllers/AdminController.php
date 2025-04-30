@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use App\Models\Vote;
+use Illuminate\Http\Request;
+use App\Models\VotingSession;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -19,7 +21,23 @@ class AdminController extends Controller
         $this->middleware('admin');
     }
 
+    public function dashboard()
+    {
+        $totalMembers = User::count();
+        $activeSessions = VotingSession::where('is_active', true)
+            ->where('start_time', '<=', now())
+            ->where('end_time', '>=', now())
+            ->count();
+        $totalVotes = Vote::count();
+        $recentSessions = VotingSession::latest()->take(5)->get();
 
+        return view('admin.dashboard', compact(
+            'totalMembers',
+            'activeSessions',
+            'totalVotes',
+            'recentSessions'
+        ));
+    }
     public function index()
     {
         $users = User::all();
@@ -65,11 +83,27 @@ class AdminController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($member->id)],
+            'email' => 'required|string|email|max:255|unique:users,email,' . $member->id ?? null,
             'phone' => 'nullable|string|max:20',
             'is_admin' => 'boolean',
             'is_judge_eligible' => 'boolean',
-            'password' => 'nullable|string|min:8|confirmed',
+            'login_method' => 'required|in:email,google,both',
+            'allowed_google_id' => [
+                'nullable',
+                'string',
+                Rule::requiredIf(function () use ($request) {
+                    return in_array($request->login_method, ['google', 'both']);
+                }),
+            ],
+            'password' => [
+                Rule::requiredIf(function () use ($request) {
+                    return in_array($request->login_method, ['email', 'both']) && !$request->isMethod('patch');
+                }),
+                'nullable',
+                'string',
+                'min:8',
+                'confirmed',
+            ],
         ]);
 
         $data = [

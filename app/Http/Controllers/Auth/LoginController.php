@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Models\User;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 
 class LoginController extends Controller
@@ -36,5 +39,21 @@ class LoginController extends Controller
     {
         $this->middleware('guest')->except('logout');
         $this->middleware('auth')->only('logout');
+    }
+
+    protected function validateLogin(Request $request)
+    {
+        $request->validate([
+            $this->username() => 'required|string',
+            'password' => 'required|string',
+        ]);
+
+        // Check if email login is allowed
+        $user = User::where('email', $request->email)->first();
+        if ($user && !in_array($user->login_method, ['email', 'both'])) {
+            throw ValidationException::withMessages([
+                $this->username() => [__('Email login is not enabled for your account. Please use Google login.')],
+            ]);
+        }
     }
 }

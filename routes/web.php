@@ -13,12 +13,14 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::resource('voting-sessions', VotingSessionController::class);
+    Route::get('voting-sessions/{votingSession}/vote', [VoteController::class, 'show'])
+        ->name('votes.show');
     Route::post('voting-sessions/{votingSession}/vote', [VoteController::class, 'store'])
         ->name('votes.store');
 });
 
-Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
-    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::resource('members', AdminController::class)->except(['show']);
 });
 

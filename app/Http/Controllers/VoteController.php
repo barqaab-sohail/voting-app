@@ -7,67 +7,84 @@ use App\Models\Vote;
 use App\Models\JudgeSelection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class VoteController extends Controller
 {
-    public function __construct()
+    public function show(VotingSession $votingSession)
     {
-        $this->middleware('auth');
+        // Check if voting session is active
+        if (!$votingSession->isActive()) {
+            return redirect()->route('voting-sessions.index')
+                ->with('error', 'This voting session is not active.');
+        }
+
+        // Check if user has already voted
+        $hasVoted = $votingSession->votes()->where('user_id', Auth::id())->exists();
+
+        // Get eligible judges for judge panel voting
+        $eligibleJudges = null;
+        if ($votingSession->type === 'judge_panel') {
+            $eligibleJudges = User::where('is_judge_eligible', true)
+                ->where('id', '!=', Auth::id())
+                ->get();
+        }
+
+        return view('votes.show', compact('votingSession', 'hasVoted', 'eligibleJudges'));
     }
 
     public function store(Request $request, VotingSession $votingSession)
     {
+        // Validate session is active
         if (!$votingSession->isActive()) {
-            return back()->with('error', 'Voting session is not active.');
+            return back()->with('error', 'This voting session has ended.');
         }
 
-        if ($votingSession->votes()->where('user_id', auth()->id())->exists()) {
+        // Check if user has already voted
+        if ($votingSession->votes()->where('user_id', Auth::id())->exists()) {
             return back()->with('error', 'You have already voted in this session.');
         }
 
+        // Handle different vote types
         if ($votingSession->type === 'single_issue') {
             $request->validate([
-                'vote_choice' => 'required|boolean',
+                'vote_choice' => 'required|boolean'
             ]);
 
-            Vote::create([
+            $vote = Vote::create([
                 'session_id' => $votingSession->id,
-                'user_id' => auth()->id(),
-                'vote_choice' => $request->vote_choice,
+                'user_id' => Auth::id(),
+                'vote_choice' => $request->vote_choice
             ]);
-        } else {
+        } elseif ($votingSession->type === 'judge_panel') {
             $request->validate([
                 'judges' => ['required', 'array', 'size:' . $votingSession->judges_count],
                 'judges.*' => [
                     'required',
                     'exists:users,id',
-                    Rule::notIn([auth()->id()]),
+                    Rule::notIn([Auth::id()]),
                     function ($attribute, $value, $fail) {
                         if (!User::find($value)->is_judge_eligible) {
                             $fail('The selected judge is not eligible.');
                         }
                     }
                 ],
-            ], [
-                'judges.size' => 'You must select exactly ' . $votingSession->judges_count . ' judges.',
-                'judges.*.not_in' => 'You cannot select yourself as a judge.',
             ]);
 
             $vote = Vote::create([
                 'session_id' => $votingSession->id,
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id()
             ]);
 
             foreach ($request->judges as $judgeId) {
                 JudgeSelection::create([
                     'vote_id' => $vote->id,
-                    'selected_judge_id' => $judgeId,
+                    'selected_judge_id' => $judgeId
                 ]);
             }
         }
 
         return redirect()->route('voting-sessions.show', $votingSession)
-            ->with('success', 'Your vote has been submitted successfully.');
+            ->with('success', 'Your vote has been submitted successfully!');
     }
 }

@@ -16,6 +16,11 @@
                     <i class="fas fa-edit"></i> Edit
                 </a>
                 @endcan
+                @if($votingSession->isActive() && !$hasVoted)
+                <a href="{{ route('votes.show', $votingSession) }}" class="btn btn-primary">
+                    <i class="fas fa-vote-yea"></i> Cast Your Vote
+                </a>
+                @endif
             </div>
         </div>
     </div>

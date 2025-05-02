@@ -44,6 +44,8 @@ class AdminController extends Controller
         return view('admin.members.index', compact('users'));
     }
 
+
+
     public function create()
     {
         return view('admin.members.create');

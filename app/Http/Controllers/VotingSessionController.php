@@ -56,8 +56,10 @@ class VotingSessionController extends Controller
     {
         $hasVoted = $votingSession->votes()->where('user_id', auth()->id())->exists();
         $results = $this->getSessionResults($votingSession);
+        $totalMembers = 15;
+        $votesCount = 0;
 
-        return view('voting-sessions.show', compact('votingSession', 'hasVoted', 'results'));
+        return view('voting-sessions.show', compact('votingSession', 'hasVoted', 'results', 'totalMembers', 'votesCount'));
     }
 
     public function edit(VotingSession $votingSession)

@@ -7,11 +7,11 @@
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
             <h4>Voting Sessions</h4>
-            @can('create', App\Models\VotingSession::class)
+
             <a href="{{ route('voting-sessions.create') }}" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Create New Session
             </a>
-            @endcan
+
         </div>
     </div>
     <div class="card-body">
@@ -56,7 +56,7 @@
                 @endforeach
             </tbody>
         </table>
-        {{ $sessions->links() }}
+
     </div>
 </div>
 @endsection
